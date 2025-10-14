@@ -24,7 +24,7 @@ public class HeroBannerWidgetMigration(ILogger<HeroBannerWidgetMigration> logger
 
             // this group of properties could be migrated to a separate reusable type (e.g., Link or CtaLink) and turned into one property with a reference - in the guide refer to the "Migrate widget data as reusable content" guide
             ["ctaText"] = singleVariant["properties"]!["ctaText"],
-            ["ctaOpenInNewTab"] = ctaTargetToBool(singleVariant["properties"]!["ctaTarget"]),
+            ["ctaOpenInNewTab"] = CtaTargetToBool(singleVariant["properties"]!["ctaTarget"]),
             // added property for better UX - to select between internal and external link in the target instance
             ["ctaTargetType"] = singleVariant["properties"]!["ctaUrlExternal"] != null && !string.IsNullOrEmpty(singleVariant["properties"]!["ctaUrlExternal"]!.ToString())
                 ? "absolute" : "page",
@@ -35,7 +35,7 @@ public class HeroBannerWidgetMigration(ILogger<HeroBannerWidgetMigration> logger
 
             // here we could utilize the reference to reusable Link or CtaLink again
             ["secondaryLinkText"] = singleVariant["properties"]!["cta2Text"],
-            ["secondaryLinkOpenInNewTab"] = ctaTargetToBool(singleVariant["properties"]!["cta2Target"]),
+            ["secondaryLinkOpenInNewTab"] = CtaTargetToBool(singleVariant["properties"]!["cta2Target"]),
             // added property for better UX - to select between internal and external link in the target instance
             ["secondaryLinkTargetType"] = singleVariant["properties"]!["ctaUrl2External"] != null && !string.IsNullOrEmpty(singleVariant["properties"]!["ctaUrl2External"]!.ToString())
                 ? "absolute" : "page",
