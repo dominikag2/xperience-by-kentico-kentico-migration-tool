@@ -13,7 +13,7 @@ public class WidgetPageSelectorToCombinedSelectorMigration(
 {
     private const string MigratedComponent = Kx13FormComponents.Kentico_PageSelector;
 
-    public int Rank => 100_002;
+    public int Rank => 100;
     public bool ShallMigrate(WidgetPropertyMigrationContext context, string propertyName)
         => MigratedComponent.Equals(context.EditingFormControlModel?.FormComponentIdentifier, StringComparison.InvariantCultureIgnoreCase);
 
@@ -22,7 +22,6 @@ public class WidgetPageSelectorToCombinedSelectorMigration(
     {
         (int siteId, _) = context;
 
-        var refsToMedia = new List<object>();
         if (value?.ToObject<List<PageSelectorItem>>() is { Count: > 0 } items)
         {
             var result = items.Select(pageSelectorItem => new ContentItemReference

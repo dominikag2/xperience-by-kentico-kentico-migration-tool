@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Migration.Tool.Extensions.DefaultMigrations;
 using Migration.Tool.KXP.Api.Services.CmsClass;
 using Newtonsoft.Json.Linq;
 
@@ -13,10 +12,6 @@ public class HeroBannerWidgetMigration(ILogger<HeroBannerWidgetMigration> logger
     public Task<WidgetMigrationResult> MigrateWidget(WidgetIdentifier identifier, JToken? value, WidgetMigrationContext context)
     {
         value!["type"] = "Xperience.Widgets.HeroBannerWidget"; //Migrate to different type of widget
-
-        // a simple example of a widget-specific property transformation that's not intended to be reused across widgets/solution
-        // as an alternative to the property migration class approach
-        var ctaTargetToBool = (JToken? value) => value?.ToString() == "_blank";
 
         var variants = (JArray)value!["variants"]!;
         var singleVariant = variants[0];
@@ -60,7 +55,7 @@ public class HeroBannerWidgetMigration(ILogger<HeroBannerWidgetMigration> logger
             ["image"] = typeof(WidgetCustomSelectorMigration),
             ["ctaTargetPage"] = typeof(WidgetPageSelectorToCombinedSelectorMigration),
             // we could do the same for cta2UrlInternal if needed, but in my example, I want to show the default migration to PageSelector as well
-            ["secondaryLinkTargetPage"] = typeof(WidgetPageSelectorMigration)
+            // ["secondaryLinkTargetPage"] = typeof(WidgetPageSelectorMigration)
         };
 
         return Task.FromResult(new WidgetMigrationResult(value, propertyMigrations));
@@ -69,5 +64,8 @@ public class HeroBannerWidgetMigration(ILogger<HeroBannerWidgetMigration> logger
     public bool ShallMigrate(WidgetMigrationContext context, WidgetIdentifier identifier) =>
         string.Equals(SOURCE_WIDGET_IDENTIFIER, identifier.TypeIdentifier, StringComparison.InvariantCultureIgnoreCase)
     && SOURCE_SITE_ID == context.SiteId;
+
+    // A simple method making a widget-specific property transformation that's not intended to be reused across widgets/solution
+    private bool CtaTargetToBool(JToken? value) => value?.ToString() == "_blank";
 
 }
