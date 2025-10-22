@@ -12,7 +12,7 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
             // 1. Widget host page tree node: Ensure the template exists and is available in XbyK target project
             if (source.SourceNode.NodeAliasPath == "/About-Us")
             {
-                options.OverridePageTemplate("PageWithWidgetsDefaultTemplate");
+                options.OverridePageTemplate("DancingGoat.LandingPageSingleColumn");
             }
             // 2. Nodes to be converted to widgets. Here we identify them by alias path. Other methods like SourceClassName are also possible
             //in some cases we may have to specify mode conditions here to match a specific node
