@@ -24,8 +24,8 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
                     // Determine where to embed the widget
                     options.Location
                         .OnAncestorPage(-1)
-                        // the area has to match what's defined in the XbyK project's view
-                        .InEditableArea("main-area")
+                        // the area has to match what's defined in the XbyK project template's view
+                        .InEditableArea("top")
                         // the section name has to match what's defined in the XbyK project
                         .InSection("DancingGoat.SingleColumnSection")
                         .InFirstZone();
