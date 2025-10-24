@@ -7,15 +7,19 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
 {
     public override void Direct(ContentItemSource source, IContentItemActionProvider options)
     {
+        // Apply the conversions only to nodes under /About-Us (or your desired KX13 tree node)
+        // The system will evaluate all following conditions for each tree node which node AliasPath starts with /About-Us
+        // This includes the /About-Us node itself and all its child nodes (/About-Us/Our-philosophy, /About-Us/References, etc.)
         if (source.SourceNode!.NodeAliasPath.StartsWith("/About-Us"))
         {
-            // 1. Widget host page tree node: Ensure the template exists and is available in XbyK target project
+            // Identify the KX13 tree node that will host the widget in XbyK
             if (source.SourceNode.NodeAliasPath == "/About-Us")
             {
+                // Ensure this template exists in the XbyK target instance
                 options.OverridePageTemplate("DancingGoat.LandingPageSingleColumn");
             }
-            // 2. Nodes to be converted to widgets. Here we identify them by alias path. Other methods like SourceClassName are also possible
-            //in some cases we may have to specify mode conditions here to match a specific node
+            // Nodes to be converted to widgets. We will identify them by SourceClassName
+            // In some cases we may have to specify more conditions here to match a specific node
             else if (source.SourceClassName == "DancingGoatCore.AboutUsSection")
             {
                 // The widget identifier must match the one defined in the XbyK target project
@@ -24,9 +28,9 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
                     // Determine where to embed the widget
                     options.Location
                         .OnAncestorPage(-1)
-                        // the area has to match what's defined in the XbyK project template's view
+                        // The area has to match what's defined in the XbyK project template's view
                         .InEditableArea("top")
-                        // the section name has to match what's defined in the XbyK project
+                        // The section name has to match what's defined in the XbyK project
                         .InSection("DancingGoat.SingleColumnSection")
                         .InFirstZone();
 
@@ -34,14 +38,14 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
                     options.Properties.Fill(true, (itemProps, reusableItemGuid, childGuids) =>
                     {
                         // Simple way to achieve basic conversion of all properties
-                        // Skipping this because this is already shown in the samples.
-                        // we want to link the object as reusable content item instead - there's no need to duplicate the values in properties
                         // var widgetProps = JObject.FromObject(itemProps);
+                        // Skipping this step because this is already shown in the samples.
+                        // We want to link the object as reusable content item instead - there's no need to duplicate the values in properties
 
                         var widgetProps = new JObject();
 
-                        // Linked the converted page as a reusable content item into a single property of the widget.
-                        // Be sure to list the page class name appsettings in ConvertClassesToContentHub to make it reusable 
+                        // Convert the page to a reusable item using ConvertClassesToContentHub in appsettings.json
+                        // Then use a single widget property to link the converted page
                         widgetProps["aboutUsSectionItem"] = LinkedItemPropertyValue(reusableItemGuid!.Value);
                         widgetProps["alignment"] = "ImageLeft"; // Example of setting a specific property value
 
@@ -57,7 +61,7 @@ public class AboutUsSectionsToWidgetsDirector : ContentItemDirectorBase
         }
         else
         {
-            // don't do anything if the node is not under /About-Us node
+            // Add any handling you want to apply to pages that are not under the /About-us node
         }
     }
 }
