@@ -3,6 +3,7 @@ using Migration.Tool.Extensions.CommunityMigrations;
 using Migration.Tool.Extensions.CustomWidgetMigrations;
 using Migration.Tool.Extensions.DefaultMigrations;
 using Migration.Tool.KXP.Api.Services.CmsClass;
+using Migration.Tool.Source.Mappers.ContentItemMapperDirectives;
 
 namespace Migration.Tool.Extensions;
 
@@ -30,6 +31,8 @@ public static class ServiceCollectionExtensions
         // services.AddReusableSchemaAutoGenerationSample();
         // services.AddTransient<ContentItemDirectorBase, SamplePageToWidgetDirector>();
         // services.AddTransient<ContentItemDirectorBase, SampleChildLinkDirector>();
+
+        services.AddTransient<ContentItemDirectorBase, AboutUsSectionsToWidgetsDirector>();
         return services;
     }
 }
