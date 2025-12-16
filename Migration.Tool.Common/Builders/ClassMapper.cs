@@ -6,34 +6,34 @@ namespace Migration.Tool.Common.Builders;
 
 public interface IClassMapping
 {
-    string TargetClassName { get; }
+    public string TargetClassName { get; }
 
-    bool IsMatch(string sourceClassName);
-    void PatchTargetDataClass(DataClassInfo target);
-    ICollection<string> SourceClassNames { get; }
-    string PrimaryKey { get; }
-    IList<IFieldMapping> Mappings { get; }
-    IDictionary<string, Action<FormFieldInfo>> TargetFieldPatchers { get; }
-    IFieldMapping? GetMapping(string targetColumnName, string sourceClassName);
+    public bool IsMatch(string sourceClassName);
+    public void PatchTargetDataClass(DataClassInfo target);
+    public ICollection<string> SourceClassNames { get; }
+    public string PrimaryKey { get; }
+    public IList<IFieldMapping> Mappings { get; }
+    public IDictionary<string, Action<FormFieldInfo>> TargetFieldPatchers { get; }
+    public IFieldMapping? GetMapping(string targetColumnName, string sourceClassName);
 
-    string? GetTargetFieldName(string sourceColumnName, string sourceClassName);
-    string GetSourceFieldName(string targetColumnName, string nodeClassClassName);
-    bool IsCategoryMapped(string sourceClassName, int categoryID);
-    void UseResusableSchema(string reusableSchemaName);
-    IList<string> ReusableSchemaNames { get; }
+    public string? GetTargetFieldName(string sourceColumnName, string sourceClassName);
+    public string GetSourceFieldName(string targetColumnName, string nodeClassClassName);
+    public bool IsCategoryMapped(string sourceClassName, int categoryID);
+    public void UseResusableSchema(string reusableSchemaName);
+    public IList<string> ReusableSchemaNames { get; }
 
     /// <summary>
     /// as for now, supported only for custom tables
     /// </summary>
-    Type? MappingHandler { get; }
+    public Type? MappingHandler { get; }
 }
 
 public interface IFieldMapping
 {
-    bool IsTemplate { get; }
-    string SourceFieldName { get; }
-    string SourceClassName { get; }
-    string TargetFieldName { get; }
+    public bool IsTemplate { get; }
+    public string SourceFieldName { get; }
+    public string SourceClassName { get; }
+    public string TargetFieldName { get; }
 }
 
 public record FieldMapping(string TargetFieldName, string SourceClassName, string SourceFieldName, bool IsTemplate) : IFieldMapping;
@@ -42,7 +42,47 @@ public record FieldMappingWithConversion(string TargetFieldName, string SourceCl
 
 public class MultiClassMapping(string targetClassName, Action<DataClassInfo> classPatcher) : IClassMapping
 {
-    public void PatchTargetDataClass(DataClassInfo target) => classPatcher(target);
+    // NEW: Collection to track completely new fields being added to the target class (independent of source mappings)
+    private readonly List<NewFieldDefinition> newFields = [];
+
+    public void PatchTargetDataClass(DataClassInfo target)
+    {
+        classPatcher(target);
+
+        // NEW: Apply new field additions to the target class form definition
+        // This allows adding fields that don't exist in the source (e.g., taxonomies, new custom fields)
+        if (newFields.Count > 0)
+        {
+            var formInfo = new FormInfo(target.ClassFormDefinition);
+
+            foreach (var newField in newFields)
+            {
+                // Check if field already exists
+                if (formInfo.GetFormField(newField.FieldName) != null)
+                {
+                    continue; // Skip if already exists
+                }
+
+                var formField = new FormFieldInfo
+                {
+                    Name = newField.FieldName,
+                    DataType = newField.DataType,
+                    AllowEmpty = newField.AllowEmpty,
+                    Enabled = true,
+                    Visible = true,
+                    Size = newField.Size
+                };
+
+                // NEW: Initialize Settings hashtable to prevent null reference when patchers try to configure settings
+                formField.Settings ??= new System.Collections.Hashtable();
+
+                // Apply custom field patcher if provided
+                newField.FieldPatcher?.Invoke(formField);
+                formInfo.AddFormItem(formField);
+            }
+            target.ClassFormDefinition = formInfo.GetXmlDefinition();
+        }
+    }
 
     ICollection<string> IClassMapping.SourceClassNames => SourceClassNames;
     IList<IFieldMapping> IClassMapping.Mappings => Mappings;
@@ -80,6 +120,31 @@ public class MultiClassMapping(string targetClassName, Action<DataClassInfo> cla
             throw new InvalidOperationException($"Field mapping is already defined for field '{targetFieldName}'");
         }
         return new FieldBuilder(this, targetFieldName);
+    }
+
+    /// <summary>
+    /// NEW: Adds a completely new field to the target class that doesn't map from any source field.
+    /// Useful for adding fields like taxonomies, content references, or other new fields that don't exist in the source.
+    /// </summary>
+    /// <param name="fieldName">The name of the new field to add</param>
+    /// <param name="dataType">The data type (e.g., "text", "contentitemreference", "integer")</param>
+    /// <returns>FieldBuilder for fluent configuration with WithFieldPatch()</returns>
+    public FieldBuilder AddField(string fieldName, string dataType = "text")
+    {
+        if (newFields.Any(x => x.FieldName.Equals(fieldName, StringComparison.InvariantCultureIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Field '{fieldName}' is already defined as a new field");
+        }
+
+        var newField = new NewFieldDefinition
+        {
+            FieldName = fieldName,
+            DataType = dataType
+        };
+
+        newFields.Add(newField);
+
+        return new FieldBuilder(this, fieldName, newField);
     }
 
     public bool IsMatch(string sourceClassName) => SourceClassNames.Contains(sourceClassName);
@@ -121,12 +186,43 @@ public interface IMappingHandlerContext;
 
 public record CustomTableMappingHandlerContext(Dictionary<string, object?> Values, DataClassInfo TargetClassInfo, string SourceClassName);
 
-public class FieldBuilder(MultiClassMapping multiClassMapping, string targetFieldName)
+/// <summary>
+/// NEW: Defines a new field to be added to the target class schema.
+/// Used by AddField() to create fields that are independent of source data mappings.
+/// </summary>
+public class NewFieldDefinition
 {
+    public string FieldName { get; set; } = null!;
+    public string DataType { get; set; } = "text";
+    public bool AllowEmpty { get; set; } = true;
+    public int Size { get; set; } = 0;
+    public Action<FormFieldInfo>? FieldPatcher { get; set; }
+}
+
+public class FieldBuilder
+{
+    private readonly MultiClassMapping multiClassMapping;
+    private readonly string targetFieldName;
+    // NEW: Optional field definition when this builder is creating a new field (via AddField)
+    private readonly NewFieldDefinition? newFieldDefinition;
     private IFieldMapping? currentFieldMapping;
+
+    // NEW: Updated constructor to support both mapped fields (BuildField) and new fields (AddField)
+    public FieldBuilder(MultiClassMapping multiClassMapping, string targetFieldName, NewFieldDefinition? newFieldDefinition = null)
+    {
+        this.multiClassMapping = multiClassMapping;
+        this.targetFieldName = targetFieldName;
+        this.newFieldDefinition = newFieldDefinition;
+    }
 
     public FieldBuilder SetFrom(string sourceClassName, string sourceFieldName, bool isTemplate = false)
     {
+        // NEW: Prevent setting source mappings on new fields (they're independent by design)
+        if (newFieldDefinition != null)
+        {
+            throw new InvalidOperationException($"Cannot set source mapping for new field '{targetFieldName}'. New fields are independent and don't map from source fields.");
+        }
+
         currentFieldMapping = new FieldMapping(targetFieldName, sourceClassName, sourceFieldName, isTemplate);
         multiClassMapping.Mappings.Add(currentFieldMapping);
         multiClassMapping.SourceClassNames.Add(sourceClassName);
@@ -135,6 +231,12 @@ public class FieldBuilder(MultiClassMapping multiClassMapping, string targetFiel
 
     public FieldBuilder ConvertFrom(string sourceClassName, string sourceFieldName, bool isTemplate, Func<object?, IConvertorContext, object?> converter)
     {
+        // NEW: Prevent setting source mappings on new fields (they're independent by design)
+        if (newFieldDefinition != null)
+        {
+            throw new InvalidOperationException($"Cannot set source mapping for new field '{targetFieldName}'. New fields are independent and don't map from source fields.");
+        }
+
         currentFieldMapping = new FieldMappingWithConversion(targetFieldName, sourceClassName, sourceFieldName, isTemplate, converter);
         multiClassMapping.Mappings.Add(currentFieldMapping);
         multiClassMapping.SourceClassNames.Add(sourceClassName);
@@ -143,9 +245,23 @@ public class FieldBuilder(MultiClassMapping multiClassMapping, string targetFiel
 
     public FieldBuilder WithFieldPatch(Action<FormFieldInfo> fieldInfoPatcher)
     {
-        if (!multiClassMapping.TargetFieldPatchers.TryAdd(targetFieldName, fieldInfoPatcher))
+        // NEW: For new fields, store the patcher in the field definition to apply during schema creation
+        // For existing/mapped fields, use the standard target field patchers collection
+        if (newFieldDefinition != null)
         {
-            throw new InvalidOperationException($"Target field mapper can be dined only once for each field, field '{targetFieldName}' has one already defined");
+            if (newFieldDefinition.FieldPatcher != null)
+            {
+                throw new InvalidOperationException($"Field patcher already defined for new field '{targetFieldName}'");
+            }
+            newFieldDefinition.FieldPatcher = fieldInfoPatcher;
+        }
+        else
+        {
+            // For existing fields, use the standard target field patchers
+            if (!multiClassMapping.TargetFieldPatchers.TryAdd(targetFieldName, fieldInfoPatcher))
+            {
+                throw new InvalidOperationException($"Target field mapper can be dined only once for each field, field '{targetFieldName}' has one already defined");
+            }
         }
         return this;
     }

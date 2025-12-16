@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Migration.Tool.Extensions.ClassMappings;
 using Migration.Tool.Extensions.CommunityMigrations;
 using Migration.Tool.Extensions.CustomWidgetMigrations;
 using Migration.Tool.Extensions.DefaultMigrations;
@@ -22,6 +23,8 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IWidgetMigration, HeroBannerWidgetMigration>();
         services.AddTransient<IWidgetPropertyMigration, WidgetPageSelectorToCombinedSelectorMigration>();
         services.AddTransient<IWidgetPropertyMigration, WidgetCustomSelectorMigration>();
+
+        services.AddTaxonomyFieldToCafe();
 
         // services.AddClassMergeExample();
         // services.AddClassMergeExampleAsReusable();

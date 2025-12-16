@@ -12,7 +12,7 @@ using Migration.Tool.KXP.Api.Auxiliary;
 
 namespace Migration.Tool.Extensions.ClassMappings;
 
-public static class ClassMappingSample
+public static class MyClassMapping
 {
     public static IServiceCollection AddReusableRemodelingSample(this IServiceCollection serviceCollection)
     {
